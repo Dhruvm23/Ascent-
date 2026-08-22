@@ -52,7 +52,9 @@ const FAST_CHAIN = [
 ];
 
 export const MODEL_CHAINS: Record<ChatTask, string[]> = {
-  curriculum: REASONING_CHAIN,
+  // Fast models first so a Vercel Hobby function (~60s) can retry instead of
+  // dying on one 60s reasoning call.
+  curriculum: FAST_CHAIN,
   explanation: REASONING_CHAIN,
   grading: REASONING_CHAIN,
   assessment: FAST_CHAIN,
@@ -66,7 +68,7 @@ export const TASK_DEFAULTS: Record<
   ChatTask,
   { temperature: number; maxTokens: number; timeoutMs: number }
 > = {
-  curriculum: { temperature: 0.4, maxTokens: 2600, timeoutMs: 60_000 },
+  curriculum: { temperature: 0.4, maxTokens: 2600, timeoutMs: 16_000 },
   explanation: { temperature: 0.7, maxTokens: 1100, timeoutMs: 45_000 },
   grading: { temperature: 0.2, maxTokens: 700, timeoutMs: 40_000 },
   assessment: { temperature: 0.5, maxTokens: 1200, timeoutMs: 40_000 },

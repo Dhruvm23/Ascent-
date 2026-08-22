@@ -20,7 +20,7 @@ export async function enrollUser(args: {
   interests: string[];
   mode: PresentationMode;
 }): Promise<{ enrollmentId: string; courseId: string; source: CurriculumSource }> {
-  const resolved = await resolveCurriculum(args.subject, args.goalText);
+  const resolved = await resolveCurriculum(args.subject, args.goalText, args.userId);
   const { id: courseId } = await ensureCourse({
     subject: args.subject,
     curriculum: resolved.curriculum,

@@ -24,6 +24,7 @@ export interface ResolvedCurriculum {
 export async function resolveCurriculum(
   subject: string,
   goal?: string,
+  userId?: string | null,
 ): Promise<ResolvedCurriculum> {
   const slug = slugifySubject(subject);
 
@@ -32,12 +33,14 @@ export async function resolveCurriculum(
     return { curriculum: cached, source: "cache", goalConceptIds: goalIdsFor(slug, cached) };
   }
 
+  let liveError: string | null = null;
   if (isAiConfigured()) {
     try {
-      const { curriculum } = await architectCurriculum({ subject, goal });
+      const { curriculum } = await architectCurriculum({ subject, goal, userId });
       return { curriculum, source: "live", goalConceptIds: goalIdsFor(slug, curriculum) };
-    } catch {
-      // fall through to curated fallback
+    } catch (err) {
+      liveError = err instanceof Error ? err.message : String(err);
+      console.error("[resolve-curriculum] live architect failed:", liveError);
     }
   }
 
@@ -50,8 +53,16 @@ export async function resolveCurriculum(
     };
   }
 
+  if (!isAiConfigured()) {
+    throw new Error(
+      process.env["ASCENT_OFFLINE_FALLBACK"] === "1"
+        ? "Live generation is off (ASCENT_OFFLINE_FALLBACK=1). Set it to 0 and redeploy, or pick a pre-loaded subject."
+        : "Couldn't build a course: OPENROUTER_API_KEY is not visible to this server. Redeploy after adding the key, or pick a pre-loaded subject.",
+    );
+  }
+
   throw new Error(
-    "Couldn't build a course for that subject right now. Add an OpenRouter API key for live generation, or try one of the pre-loaded subjects.",
+    `Couldn't generate a live course for that subject (API key is present). ${liveError ?? "All models failed."} Try again, or pick a pre-loaded subject.`,
   );
 }
 

@@ -6,6 +6,9 @@ import { parseBody, enforceRateLimit } from "@/lib/http";
 import { enrollUser } from "@/lib/enrollment";
 import { PRESENTATION_MODES } from "@/lib/constants";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 const schema = z.object({
   subject: z.string().min(2).max(120),
   goal: z.string().max(300).optional(),
@@ -55,9 +58,8 @@ export async function POST(req: Request) {
       })),
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Enrolment failed." },
-      { status: 502 },
-    );
+    const message = err instanceof Error ? err.message : "Enrolment failed.";
+    console.error("[enroll]", message);
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 }

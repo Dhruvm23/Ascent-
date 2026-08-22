@@ -26,12 +26,17 @@ import { logAgentCall } from "./log";
  *     cache hit, status) for the /dev/logs efficiency view
  */
 
+/** Runtime lookup (bracket access) so Next/Webpack cannot freeze a build-time empty key. */
+function env(name: string): string {
+  return (process.env[name] ?? "").trim().replace(/^["']|["']$/g, "");
+}
+
+export function openRouterApiKey(): string {
+  return env("OPENROUTER_API_KEY");
+}
+
 export function isAiConfigured(): boolean {
-  return (
-    process.env.ASCENT_OFFLINE_FALLBACK !== "1" &&
-    !!process.env.OPENROUTER_API_KEY &&
-    process.env.OPENROUTER_API_KEY.length > 8
-  );
+  return env("ASCENT_OFFLINE_FALLBACK") !== "1" && openRouterApiKey().length > 8;
 }
 
 export async function callLLM(opts: LlmCallOptions): Promise<LlmCallResult> {
@@ -134,10 +139,12 @@ async function callOnce(
     const res = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${openRouterApiKey()}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.OPENROUTER_APP_URL ?? "http://localhost:3000",
-        "X-Title": process.env.OPENROUTER_APP_NAME ?? "Ascent",
+        "HTTP-Referer":
+          env("OPENROUTER_APP_URL") ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+        "X-Title": env("OPENROUTER_APP_NAME") || "Ascent",
       },
       body: JSON.stringify({
         model,

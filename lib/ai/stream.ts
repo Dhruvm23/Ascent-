@@ -1,5 +1,5 @@
 import { MODEL_CHAINS, TASK_DEFAULTS, OPENROUTER_URL } from "./models.config";
-import { callLLM, isAiConfigured } from "./client";
+import { callLLM, isAiConfigured, openRouterApiKey } from "./client";
 import { logAgentCall } from "./log";
 import { AiNotConfiguredError, type LlmCallOptions } from "./types";
 
@@ -36,10 +36,12 @@ export async function* streamChat(opts: LlmCallOptions): AsyncGenerator<string, 
     const res = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        Authorization: `Bearer ${openRouterApiKey()}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": process.env.OPENROUTER_APP_URL ?? "http://localhost:3000",
-        "X-Title": process.env.OPENROUTER_APP_NAME ?? "Ascent",
+        "HTTP-Referer":
+          process.env["OPENROUTER_APP_URL"]?.trim() ||
+          (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"),
+        "X-Title": process.env["OPENROUTER_APP_NAME"]?.trim() || "Ascent",
       },
       body: JSON.stringify({
         model,
