@@ -20,7 +20,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "cache:subjects": "tsx scripts/generate-subjects.ts",
-    "verify:models": "tsx scripts/check-openrouter.ts"
+    "verify:models": "tsx scripts/check-openrouter.ts",
+    "gen:favicons": "tsx scripts/generate-favicons.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
