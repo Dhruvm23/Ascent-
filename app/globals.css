@@ -1,0 +1,345 @@
+@import "tailwindcss";
+
+/* ============================================================
+   ASCENT — Topographic Cartography design system
+   Learning framed as a survey route up a mountain. The single
+   signature is the knowledge graph as a topo route map; every
+   other surface stays quiet and precise.
+   ============================================================ */
+
+:root {
+  /* --- Substrate: cool survey paper (deliberately greyer than warm cream) --- */
+  --vellum: #eae7de;
+  --vellum-deep: #ded8c9;
+  --vellum-inset: #f2efe8;
+
+  /* --- Ink --- */
+  --basalt: #171a17; /* near-black green ink: text + contour hairlines */
+  --slate: #3f4a44; /* secondary ink */
+  --contour: #8a968b; /* sage grey-green: map lines, dividers, muted text */
+  --contour-soft: rgba(63, 74, 68, 0.14);
+
+  /* --- Elevation scale = mastery. Cold valley -> warm summit --- */
+  --valley: #1f6f6b; /* low P(known) */
+  --ridge: #a7a24e; /* mid */
+  --summit: #f0b429; /* high mastery */
+
+  /* --- Signature accent: fluoro survey-marker orange. USE SPARINGLY. --- */
+  --flag: #ff5b34;
+  --flag-deep: #e8471f;
+
+  /* --- Semantic status --- */
+  --misconception: #c6402f; /* distinct from "not yet learned" */
+  --ok: #1f6f6b;
+
+  /* --- Roles --- */
+  --bg: var(--vellum);
+  --surface: var(--vellum-inset);
+  --fg: var(--basalt);
+  --muted: var(--slate);
+  --line: var(--contour-soft);
+
+  /* --- Typography --- */
+  --font-display: var(--font-bricolage), "Bricolage Grotesque", system-ui, sans-serif;
+  --font-body: var(--font-hanken), "Hanken Grotesk", system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), "Space Mono", ui-monospace, monospace;
+
+  /* --- Type scale (fluid). Presentation modes scale --step-base. --- */
+  --step-base: 1rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: var(--step-base);
+  --text-lg: 1.2rem;
+  --text-xl: 1.6rem;
+  --text-2xl: clamp(1.9rem, 1.4rem + 2vw, 2.8rem);
+  --text-3xl: clamp(2.6rem, 1.6rem + 4vw, 4.6rem);
+
+  /* --- Spacing / density (mode-tunable) --- */
+  --density: 1;
+  --gap: calc(1rem * var(--density));
+  --pad-card: calc(1.4rem * var(--density));
+  --radius: 4px; /* map-tile squareness; not pill-rounded */
+  --radius-lg: 8px;
+
+  /* --- Motion --- */
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-micro: 160ms;
+}
+
+/* Presentation modes: real layout + density differences, not a font toggle. */
+[data-mode="explorer"] {
+  --step-base: 1.125rem; /* larger, gentler */
+  --density: 1.25;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
+[data-mode="focus"] {
+  --step-base: 1rem;
+  --density: 1.05;
+  --radius: 4px;
+}
+[data-mode="mastery"] {
+  --step-base: 0.9375rem; /* denser, metrics-forward */
+  --density: 0.85;
+  --radius: 3px;
+}
+
+/* Accessibility toggles driven by data-attrs on <html> */
+[data-dyslexia="on"] {
+  --font-body: "Comic Sans MS", "OpenDyslexic", var(--font-hanken), sans-serif;
+  letter-spacing: 0.01em;
+  word-spacing: 0.08em;
+}
+
+@theme inline {
+  --color-vellum: var(--vellum);
+  --color-vellum-deep: var(--vellum-deep);
+  --color-vellum-inset: var(--vellum-inset);
+  --color-basalt: var(--basalt);
+  --color-slate: var(--slate);
+  --color-contour: var(--contour);
+  --color-valley: var(--valley);
+  --color-ridge: var(--ridge);
+  --color-summit: var(--summit);
+  --color-flag: var(--flag);
+  --color-flag-deep: var(--flag-deep);
+  --color-misconception: var(--misconception);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--line);
+}
+
+html {
+  font-size: var(--step-base);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-feature-settings: "ss01", "cv01";
+  line-height: 1.55;
+  min-height: 100%;
+  /* Faint topo-graticule ambient texture, low-contrast so it never fights content */
+  background-image:
+    linear-gradient(var(--contour-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--contour-soft) 1px, transparent 1px);
+  background-size: 96px 96px, 96px 96px;
+  background-position: -1px -1px;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  text-wrap: balance;
+}
+
+/* Mono utility: elevation readouts, P(known), coordinates, labels */
+.data,
+.eyebrow {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.eyebrow {
+  font-size: var(--text-xs);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Visible focus on EVERYTHING interactive (a11y floor). */
+:where(a, button, input, textarea, select, [tabindex], [role="button"]):focus-visible {
+  outline: 2.5px solid var(--flag);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--summit);
+  color: var(--basalt);
+}
+
+/* Reduced motion: honor OS pref AND in-app toggle (data-motion="off"). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+[data-motion="off"] *,
+[data-motion="off"] *::before,
+[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}
+
+/* ---------- Reusable primitives ---------- */
+
+.container-map {
+  width: min(100% - 2.5rem, 78rem);
+  margin-inline: auto;
+}
+
+.loop-grid {
+  display: grid;
+  gap: 1px;
+  grid-template-columns: repeat(3, 1fr);
+}
+@media (max-width: 780px) {
+  .loop-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 500px) {
+  .loop-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .app-shell {
+    grid-template-columns: 1fr !important;
+  }
+  .app-rail {
+    position: static !important;
+    height: auto !important;
+  }
+}
+
+/* Survey-marker button: flagging-tape orange with dark stencil text (AA-safe). */
+.btn-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--flag);
+  color: var(--basalt);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--basalt);
+  box-shadow: 3px 3px 0 var(--basalt);
+  transition: transform var(--dur-micro) var(--ease-snappy),
+    box-shadow var(--dur-micro) var(--ease-snappy);
+  cursor: pointer;
+}
+.btn-flag:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 var(--basalt);
+}
+.btn-flag:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 var(--basalt);
+}
+
+.btn-quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  padding: 0.7rem 1.1rem;
+  border-radius: var(--radius);
+  border: 1.5px solid var(--basalt);
+  transition: background var(--dur-micro) var(--ease-snappy);
+  cursor: pointer;
+}
+.btn-quiet:hover {
+  background: color-mix(in srgb, var(--basalt) 8%, transparent);
+}
+
+/* Waypoint card: a map annotation, hairline-ruled, no soft floaty shadow. */
+.card {
+  background: var(--surface);
+  border: 1.5px solid var(--basalt);
+  border-radius: var(--radius-lg);
+  padding: var(--pad-card);
+}
+
+.hairline {
+  border: 0;
+  border-top: 1.5px solid var(--basalt);
+}
+
+/* Contour ring background used behind hero / celebratory moments. */
+.topo-rings {
+  background-image:
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 8%, var(--contour-soft) 8.4%, transparent 8.8%),
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 16%, var(--contour-soft) 16.4%, transparent 16.8%),
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 24%, var(--contour-soft) 24.4%, transparent 24.8%),
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 32%, var(--contour-soft) 32.4%, transparent 32.8%),
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 40%, var(--contour-soft) 40.4%, transparent 40.8%),
+    radial-gradient(circle at 50% 60%, transparent 0, transparent 48%, var(--contour-soft) 48.4%, transparent 48.8%);
+}
+
+/* Skeleton loading that matches final layout, not a spinner. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--vellum-deep) 0%,
+    var(--vellum-inset) 50%,
+    var(--vellum-deep) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-pan 1.4s ease-in-out infinite;
+  border-radius: var(--radius);
+}
+@keyframes skeleton-pan {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link for keyboard users. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 100;
+  background: var(--basalt);
+  color: var(--vellum);
+  padding: 0.6rem 1rem;
+  border-radius: var(--radius);
+  transition: top var(--dur-micro) var(--ease-snappy);
+}
+.skip-link:focus {
+  top: 1rem;
+}

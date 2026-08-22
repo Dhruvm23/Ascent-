@@ -1,0 +1,168 @@
+// Ascent data model. Fully subject-agnostic: a Course is just a generated
+// graph of Concepts; nothing here knows or cares what the subject is.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  email            String   @unique
+  name             String?
+  passwordHash     String
+  presentationMode String   @default("focus")
+  interests        String[] // Analogy Engine anchors (e.g. ["basketball","cooking"])
+  createdAt        DateTime @default(now())
+
+  enrollments    Enrollment[]
+  agentLogs      AgentLog[]
+  createdCourses Course[]
+}
+
+// A generated course = a prerequisite graph of concepts for one subject.
+model Course {
+  id          String   @id @default(cuid())
+  slug        String // normalized subject key
+  title       String
+  subject     String // raw subject text as the learner typed it
+  summary     String?
+  isCached    Boolean  @default(false) // pre-seeded / offline-generated safety net
+  createdById String?
+  createdBy   User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+
+  concepts    Concept[]
+  quizItems   QuizItem[]
+  enrollments Enrollment[]
+
+  @@index([slug])
+}
+
+model Concept {
+  id             String  @id @default(cuid())
+  courseId       String
+  course         Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  externalId     String // id used inside the generated graph (e.g. "intervals")
+  name           String
+  description    String
+  difficultyTier Int     @default(1)
+  elevation      Int     @default(0) // longest prerequisite chain length (layout)
+
+  // Self-relation: prerequisites <-> dependents (implicit M-N).
+  prerequisites Concept[] @relation("ConceptPrereqs")
+  dependents    Concept[] @relation("ConceptPrereqs")
+
+  masteryStates MasteryState[]
+  quizItems     QuizItem[]
+
+  @@unique([courseId, externalId])
+}
+
+model QuizItem {
+  id         String   @id @default(cuid())
+  courseId   String
+  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  conceptId  String
+  concept    Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  kind       String // "diagnostic" | "mcq" | "feynman"
+  stem       String
+  choices    Json? // [{ id, text }] for mcq / diagnostic
+  answer     String? // correct choice id
+  difficulty Float    @default(0) // IRT difficulty for diagnostic items
+  createdAt  DateTime @default(now())
+
+  @@index([courseId])
+  @@index([conceptId])
+}
+
+model Enrollment {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId       String
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  goalText       String?
+  goalConceptIds String[] // target subgraph (external ids) for the goal route
+  targetWeeks    Int      @default(6)
+  diagnosticDone Boolean  @default(false)
+  startedAt      DateTime @default(now())
+
+  masteryStates MasteryState[]
+  interactions  Interaction[]
+
+  @@unique([userId, courseId])
+}
+
+// The living "Cognitive Fingerprint": one row per concept per enrolment.
+model MasteryState {
+  id             String   @id @default(cuid())
+  enrollmentId   String
+  enrollment     Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  conceptId      String
+  concept        Concept  @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  pKnown         Float    @default(0.2) // Bayesian mastery probability
+  easeFactor     Float    @default(2.5) // SM-2
+  intervalDays   Int      @default(0)
+  repetitions    Int      @default(0)
+  dueAt          DateTime @default(now())
+  lastReviewedAt DateTime @default(now())
+  misconception  Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([enrollmentId, conceptId])
+  @@index([enrollmentId])
+}
+
+// Raw signal for the Confusion Radar. Never overwritten — an audit trail.
+model Interaction {
+  id            String     @id @default(cuid())
+  enrollmentId  String
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  conceptId     String
+  type          String // "diagnostic" | "quiz" | "feynman" | "review"
+  correct       Boolean?
+  latencyMs     Int?
+  confidence    Float?
+  answerChanges Int        @default(0)
+  attempts      Int        @default(1)
+  payload       Json?
+  createdAt     DateTime   @default(now())
+
+  @@index([enrollmentId])
+}
+
+// Every LLM call is logged for the Efficiency view (/dev/logs).
+model AgentLog {
+  id               String   @id @default(cuid())
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  agent            String // "curriculum-architect" | "tutor" | "assessor" | ...
+  taskType         String
+  modelRequested   String
+  modelServed      String?
+  attempts         Int      @default(1)
+  latencyMs        Int
+  promptTokens     Int?
+  completionTokens Int?
+  cached           Boolean  @default(false)
+  status           String // "ok" | "fallback" | "cached" | "degraded" | "error"
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+// Generated graphs cached by subject so repeat learners (and judges) get an
+// instant, reliable course without re-generating. Music Theory + 2 others
+// are pre-seeded here offline.
+model CurriculumCache {
+  id         String   @id @default(cuid())
+  subjectKey String   @unique // normalized slug
+  subject    String
+  graph      Json // { concepts: [...], diagnostics: [...] }
+  createdAt  DateTime @default(now())
+}
