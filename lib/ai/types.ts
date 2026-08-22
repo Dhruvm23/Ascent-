@@ -31,6 +31,8 @@ export interface LlmCallOptions {
    * back a response that's valid JSON but the wrong shape.
    */
   validate?: (text: string) => void;
+  /** Cap how many models to try (defaults to MAX_ATTEMPTS). */
+  maxAttempts?: number;
 }
 
 export interface LlmCallResult {

@@ -1,6 +1,6 @@
 import type { PresentationMode } from "@/lib/constants";
-import type { GradingOutput } from "./schemas";
-import { clamp } from "@/lib/utils";
+import { curriculumSchema, type CurriculumOutput, type GradingOutput } from "./schemas";
+import { clamp, slugifySubject } from "@/lib/utils";
 
 /**
  * Static, deterministic fallbacks used when every model in the chain fails or
@@ -68,6 +68,93 @@ export function staticReflection(args: {
     ? ` Next up, focus on ${args.nextConceptName} — it's the next foothold on your route.`
     : " You've reached the summit of this route — consider setting a new goal.";
   return `You've mastered ${args.masteredCount} of ${args.totalCount} concepts (${pct}%).${next}`;
+}
+
+/**
+ * Last-resort course when every live model fails (429, timeout, bad JSON).
+ * Subject-agnostic ladder so enroll always succeeds; not a substitute for the Architect.
+ */
+export function staticCurriculum(subject: string, goal?: string): CurriculumOutput {
+  const label = subject.trim().slice(0, 80) || "this subject";
+  const slug = (slugifySubject(label) || "topic").slice(0, 24);
+  const goalBit = goal?.trim()
+    ? ` Aimed at: ${goal.trim().slice(0, 160)}.`
+    : "";
+
+  const steps: { id: string; name: string; description: string; prereq: string[]; tier: number }[] = [
+    {
+      id: `${slug}-foundations`,
+      name: `Foundations of ${label}`,
+      description: `The basic terms and building blocks you need before anything else in ${label}.`,
+      prereq: [],
+      tier: 1,
+    },
+    {
+      id: `${slug}-core`,
+      name: `Core idea of ${label}`,
+      description: `The single mechanism or pattern that most of ${label} is organised around.${goalBit}`,
+      prereq: [`${slug}-foundations`],
+      tier: 2,
+    },
+    {
+      id: `${slug}-practice`,
+      name: `Working with ${label}`,
+      description: `How to apply the core idea of ${label} in a small, concrete example.`,
+      prereq: [`${slug}-core`],
+      tier: 3,
+    },
+    {
+      id: `${slug}-links`,
+      name: `How ${label} connects`,
+      description: `How the core idea of ${label} depends on the foundations and leads into later skill.`,
+      prereq: [`${slug}-practice`],
+      tier: 3,
+    },
+    {
+      id: `${slug}-apply`,
+      name: `Using ${label} in context`,
+      description: `A realistic situation where you would use ${label} to make a decision or produce something.`,
+      prereq: [`${slug}-links`],
+      tier: 4,
+    },
+    {
+      id: `${slug}-summit`,
+      name: `Putting ${label} together`,
+      description: `Combine the earlier waypoints into one coherent picture of ${label}.`,
+      prereq: [`${slug}-apply`],
+      tier: 5,
+    },
+  ];
+
+  const concepts = steps.map((s) => ({
+    id: s.id.slice(0, 60),
+    name: s.name.slice(0, 120),
+    description: s.description.slice(0, 600),
+    prerequisiteIds: s.prereq,
+    difficultyTier: s.tier,
+  }));
+
+  const diagnostics = concepts.slice(0, 4).map((c, i) => ({
+    conceptId: c.id,
+    stem: `Which statement best describes "${c.name}"?`,
+    choices: [
+      { id: "a", text: c.description.slice(0, 400) },
+      { id: "b", text: `${c.name} is unrelated to ${label}.` },
+      { id: "c", text: `${c.name} is only a memorisation trick, not a real idea.` },
+    ],
+    answerId: "a" as const,
+    difficulty: ([-1, -0.3, 0.4, 1] as const)[i] ?? 0,
+  }));
+
+  return curriculumSchema.parse({
+    title: label.slice(0, 120),
+    summary: `A starter route through ${label} (offline fallback while live models are unavailable).${goalBit}`.slice(
+      0,
+      500,
+    ),
+    concepts,
+    diagnostics,
+  });
 }
 
 export function staticQuizItem(conceptName: string, conceptDescription: string) {

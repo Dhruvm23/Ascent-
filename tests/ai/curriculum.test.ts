@@ -3,7 +3,9 @@ import { describe, it, expect, vi } from "vitest";
 vi.mock("@/lib/ai/log", () => ({ logAgentCall: vi.fn() }));
 
 import { parseAndValidateCurriculum } from "@/lib/ai/agents/curriculum-architect";
-import { CurriculumInvalidError } from "@/lib/ai/agents/curriculum-architect";
+import { CurriculumInvalidError, curriculumToNodes } from "@/lib/ai/agents/curriculum-architect";
+import { staticCurriculum } from "@/lib/ai/fallback";
+import { validateGraph } from "@/lib/engine/graph";
 
 const valid = {
   title: "Test Course",
@@ -64,5 +66,14 @@ describe("parseAndValidateCurriculum", () => {
   it("rejects schema-invalid payloads (too few concepts)", () => {
     const tiny = { ...valid, concepts: valid.concepts.slice(0, 1) };
     expect(() => parseAndValidateCurriculum(JSON.stringify(tiny))).toThrow();
+  });
+});
+
+describe("staticCurriculum fallback", () => {
+  it("produces a graph the engine will accept", () => {
+    const cur = staticCurriculum("Knot Tying", "Tie a figure-eight");
+    expect(cur.concepts.length).toBeGreaterThanOrEqual(4);
+    expect(cur.diagnostics.length).toBeGreaterThanOrEqual(3);
+    expect(validateGraph(curriculumToNodes(cur)).ok).toBe(true);
   });
 });

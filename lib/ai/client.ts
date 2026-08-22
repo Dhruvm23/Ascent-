@@ -80,9 +80,10 @@ export async function callLLM(opts: LlmCallOptions): Promise<LlmCallResult> {
   }
 
   // 3. Walk the fallback chain.
+  const attemptCap = opts.maxAttempts ?? MAX_ATTEMPTS;
   let attempts = 0;
   let lastError = "unknown error";
-  for (let i = 0; i < chain.length && attempts < MAX_ATTEMPTS; i++) {
+  for (let i = 0; i < chain.length && attempts < attemptCap; i++) {
     const model = chain[i];
     attempts++;
     try {

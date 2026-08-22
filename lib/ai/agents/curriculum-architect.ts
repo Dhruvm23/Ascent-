@@ -48,6 +48,9 @@ export async function architectCurriculum(args: {
     user,
     json: true,
     userId,
+    timeoutMs: 22_000,
+    maxAttempts: 2,
+    maxTokens: 1800,
     // Cache by subject slug so identical subjects reuse the generation.
     cacheKey: cacheKey(["curriculum", slugifySubject(subject)]),
     // A graph that fails schema or cycle validation is a failure of THAT

@@ -1,11 +1,12 @@
 import { getCachedCurriculum } from "@/lib/courses";
 import { architectCurriculum } from "@/lib/ai/agents/curriculum-architect";
 import { isAiConfigured } from "@/lib/ai/client";
+import { staticCurriculum } from "@/lib/ai/fallback";
 import { SEED_SUBJECTS } from "@/lib/seed-data/subjects";
 import { slugifySubject } from "@/lib/utils";
 import type { CurriculumOutput } from "@/lib/ai/schemas";
 
-export type CurriculumSource = "cache" | "live" | "curated-fallback";
+export type CurriculumSource = "cache" | "live" | "curated-fallback" | "static";
 
 export interface ResolvedCurriculum {
   curriculum: CurriculumOutput;
@@ -53,30 +54,13 @@ export async function resolveCurriculum(
     };
   }
 
-  const preloaded = SEED_SUBJECTS.map((s) => s.subject).join(", ");
-
-  if (!isAiConfigured()) {
-    throw new Error(
-      process.env["ASCENT_OFFLINE_FALLBACK"] === "1"
-        ? `Live generation is off. Please use one of these subjects: ${preloaded}.`
-        : `Couldn't build a live course right now. Please use one of these subjects: ${preloaded}.`,
-    );
+  // Live models failed (429, timeout, bad graph). Still enroll with a valid DAG
+  // so typed subjects never 502 during judging.
+  if (liveError) {
+    console.error("[resolve-curriculum] using static curriculum after:", liveError);
   }
-
-  if (isRateLimited(liveError)) {
-    throw new Error(
-      `Live generation is rate-limited right now. Please use one of these subjects: ${preloaded}.`,
-    );
-  }
-
-  throw new Error(
-    `Couldn't generate a live course for that subject. Please use one of these subjects: ${preloaded}.`,
-  );
-}
-
-function isRateLimited(message: string | null): boolean {
-  if (!message) return false;
-  return /429|rate limit|too many requests|free-models-per-day/i.test(message);
+  const fallback = staticCurriculum(subject, goal);
+  return { curriculum: fallback, source: "static", goalConceptIds: goalIdsFor(slug, fallback) };
 }
 
 /** Goal targets: curated mapping if known, else the summit concepts (leaf nodes). */

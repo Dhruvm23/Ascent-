@@ -24,7 +24,10 @@ export async function enrollUser(args: {
   const { id: courseId } = await ensureCourse({
     subject: args.subject,
     curriculum: resolved.curriculum,
-    isCached: resolved.source === "cache" || resolved.source === "curated-fallback",
+    isCached:
+      resolved.source === "cache" ||
+      resolved.source === "curated-fallback" ||
+      resolved.source === "static",
     createdById: args.userId,
   });
 
