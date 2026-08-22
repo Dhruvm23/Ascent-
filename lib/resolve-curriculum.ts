@@ -53,17 +53,30 @@ export async function resolveCurriculum(
     };
   }
 
+  const preloaded = SEED_SUBJECTS.map((s) => s.subject).join(", ");
+
   if (!isAiConfigured()) {
     throw new Error(
       process.env["ASCENT_OFFLINE_FALLBACK"] === "1"
-        ? "Live generation is off (ASCENT_OFFLINE_FALLBACK=1). Set it to 0 and redeploy, or pick a pre-loaded subject."
-        : "Couldn't build a course: OPENROUTER_API_KEY is not visible to this server. Redeploy after adding the key, or pick a pre-loaded subject.",
+        ? `Live generation is off. Please use one of these subjects: ${preloaded}.`
+        : `Couldn't build a live course right now. Please use one of these subjects: ${preloaded}.`,
+    );
+  }
+
+  if (isRateLimited(liveError)) {
+    throw new Error(
+      `Live generation is rate-limited right now. Please use one of these subjects: ${preloaded}.`,
     );
   }
 
   throw new Error(
-    `Couldn't generate a live course for that subject (API key is present). ${liveError ?? "All models failed."} Try again, or pick a pre-loaded subject.`,
+    `Couldn't generate a live course for that subject. Please use one of these subjects: ${preloaded}.`,
   );
+}
+
+function isRateLimited(message: string | null): boolean {
+  if (!message) return false;
+  return /429|rate limit|too many requests|free-models-per-day/i.test(message);
 }
 
 /** Goal targets: curated mapping if known, else the summit concepts (leaf nodes). */
